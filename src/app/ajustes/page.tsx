@@ -7,6 +7,7 @@ import { validateBackup } from "@/lib/backup";
 import { BackupPayload } from "@/lib/types";
 import { waitForWrites } from "@/lib/persistence";
 import { todayDateString } from "@/lib/dates";
+import RestoreConfirmation from "@/components/RestoreConfirmation";
 import { ChevronLeft, Download, Upload } from "lucide-react";
 
 export default function AjustesPage() {
@@ -52,7 +53,7 @@ export default function AjustesPage() {
     setBusy(true);
     try {
       await waitForWrites();
-      await importBackup(confirmImport);
+      await importBackup(confirmImport, { replaceExisting: true, unverifiedCopyAcknowledged: true });
       setMessage("Backup importado. Todos tus datos anteriores fueron reemplazados.");
     } catch {
       setMessage("No se pudo importar el archivo. Verificá que sea un backup válido.");
@@ -114,36 +115,8 @@ export default function AjustesPage() {
         </div>
       </div>
 
-      {confirmImport && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-6 sm:pb-0">
-          <div className="w-full max-w-sm rounded-2xl bg-surface border border-border p-5">
-            <p className="text-sm text-text mb-1">¿Importar este backup?</p>
-            <p className="text-xs text-text-tertiary mb-4">
-              Esto reemplaza todos los datos actuales de la app por los del archivo. No se puede
-              deshacer.
-            </p>
-            <p className="text-xs mb-3">Archivo validado: {confirmImport.workoutSessions.length} entrenamientos, {confirmImport.sets.length} series.</p>
-            <button disabled={busy} onClick={handleExport} className="w-full py-2 text-accent text-sm">Descargar copia de los datos actuales</button>
-            {message && <p role="status" className="text-xs mb-3">{message}</p>}
-            <div className="flex gap-2">
-              <button
-                disabled={busy}
-                onClick={() => setConfirmImport(null)}
-                className="flex-1 py-2.5 rounded-xl bg-surface-2 text-text-secondary text-sm"
-              >
-                Cancelar
-              </button>
-              <button
-                disabled={busy}
-                onClick={confirmDoImport}
-                className="flex-1 py-2.5 rounded-xl bg-accent text-bg font-medium text-sm"
-              >
-                Importar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {confirmImport && <RestoreConfirmation payload={confirmImport} busy={busy} message={message}
+        onCopy={handleExport} onCancel={() => setConfirmImport(null)} onConfirm={confirmDoImport} />}
     </div>
   );
 }

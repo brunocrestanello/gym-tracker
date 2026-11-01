@@ -9,11 +9,27 @@ const http = require('node:http');
   mkdirSync('work', { recursive: true });
   await new Promise((resolve, reject) => webpack({ mode: 'development', devtool: false, entry: path.resolve('tests/browser.js'), output: { path: path.resolve('work/tests'), filename: 'suite.js' }, resolve: { extensions: ['.ts', '.tsx', '.js'], alias: { '@': path.resolve('src') } }, module: { rules: [{ test: /\.tsx?$/, use: path.resolve('tests/ts-loader.cjs') }] } }, (error, stats) => error || stats.hasErrors() ? reject(error || Error(stats.toString())) : resolve()));
   const profile = mkdtempSync(path.join(tmpdir(), 'gym-tracker-test-'));
-  const server = http.createServer((req, res) => { res.setHeader('Content-Type', 'text/html'); res.end('<script>' + readFileSync('work/tests/suite.js', 'utf8').replaceAll('</script', '<\\/script') + '</script>'); });
+  const server = http.createServer((req, res) => {
+    const url = new URL(req.url, 'http://localhost');
+    res.setHeader('Cache-Control','no-store');
+    if (url.pathname === '/sw-test/sw.js') {
+      res.setHeader('Content-Type','application/javascript; charset=utf-8');
+      const legacy = url.searchParams.get('version') === '1';
+      res.end(readFileSync(legacy ? 'tests/fixtures/sw-original.js' : 'public/sw.js','utf8').replace(legacy ? 'rutina-bruno-v1' : 'rutina-bruno-v2', 'rutina-bruno-test-' + url.searchParams.get('version')));
+    } else if (url.pathname === '/manifest.json') {
+      res.setHeader('Content-Type','application/json'); res.end('{}');
+    } else if (url.pathname.startsWith('/sw-test/')) {
+      res.setHeader('Content-Type',req.headers.rsc ? 'text/x-component' : 'text/html; charset=utf-8');
+      res.end(req.headers.rsc ? 'RSC payload' : '<p id="marker">worker-client</p>');
+    } else {
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.end('<meta charset="utf-8"><script>' + readFileSync('work/tests/suite.js', 'utf8').replaceAll('</script', '<\\/script') + '</script>');
+    }
+  });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const chrome = spawn(process.env.CHROMIUM_PATH || 'chromium', ['--headless', '--no-sandbox', '--disable-gpu', '--remote-debugging-port=0', '--user-data-dir=' + profile, 'about:blank']);
   let ws;
-  const timeout = setTimeout(() => { console.error('Browser tests timed out'); chrome.kill(); process.exitCode = 1; }, 60000);
+  const timeout = setTimeout(() => { console.error('Browser tests timed out'); chrome.kill(); server.close(); ws?.close(); process.exit(1); }, 60000);
   try {
     const endpoint = await new Promise((resolve, reject) => {
       let log = '';

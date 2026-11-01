@@ -1,4 +1,5 @@
 import { v4 as uuid } from "uuid";
+import { persist, forgetDeletedSetFailures, waitForWrites } from "./persistence";
 import { validateBackup } from "./backup";
 import { db } from "./db";
 import { exerciseById, exercisesForDay } from "@/data/routine";
@@ -140,7 +141,10 @@ export async function addSet(exerciseSessionId: string): Promise<SetEntry> {
 }
 
 export async function removeSet(setId: string): Promise<void> {
-  await db.sets.delete(setId);
+  await persist(`${setId}:delete`, async () => {
+    await db.sets.delete(setId);
+    forgetDeletedSetFailures(setId);
+  }, `set:${setId}`);
 }
 
 export async function updateSet(
@@ -229,6 +233,7 @@ export interface FinishSummary {
 
 /** Finaliza la sesión: marca PRs por serie y devuelve el resumen. */
 export async function finishSession(workoutSessionId: string): Promise<FinishSummary> {
+  await waitForWrites();
   return db.transaction("rw", db.workoutSessions, db.exerciseSessions, db.sets, async () => {
     const session = await db.workoutSessions.get(workoutSessionId);
     if (!session) throw new Error("Sesión no encontrada");
@@ -291,16 +296,16 @@ export async function finishSession(workoutSessionId: string): Promise<FinishSum
       }
     }
 
-    await db.workoutSessions.update(workoutSessionId, {
+    if (!session.finishedAt) await db.workoutSessions.update(workoutSessionId, {
       finishedAt,
       duration: durationSeconds,
-  });
+    });
 
   return {
     exerciseCount: exSessions.length,
     setCount,
     totalVolume,
-    durationSeconds,
+    durationSeconds: session.duration ?? durationSeconds,
     prCount,
   };
 
@@ -356,8 +361,12 @@ export async function exportBackup(): Promise<BackupPayload> {
   });
 }
 
-export async function importBackup(input: unknown): Promise<void> {
+export async function importBackup(input: unknown, consent?: { replaceExisting: true; unverifiedCopyAcknowledged: true }): Promise<void> {
+  if (consent?.replaceExisting !== true || consent.unverifiedCopyAcknowledged !== true) {
+    throw new Error("Restaurar requiere advertir el reemplazo y confirmar el riesgo de continuar sin copia verificada.");
+  }
   const payload = validateBackup(input);
+  await waitForWrites();
   await db.transaction("rw", db.exercises, db.workoutSessions, db.exerciseSessions, db.sets, async () => {
     await db.exercises.clear();
     await db.workoutSessions.clear();

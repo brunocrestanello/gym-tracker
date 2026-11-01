@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ensureSeeded } from "@/lib/db";
+import UnsavedChangesGuard from "@/components/UnsavedChangesGuard";
 import { RestTimerProvider } from "@/components/RestTimer";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -22,5 +23,5 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <RestTimerProvider>{children}</RestTimerProvider>;
+  return <RestTimerProvider><UnsavedChangesGuard />{children}</RestTimerProvider>;
 }

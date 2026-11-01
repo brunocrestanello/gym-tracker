@@ -54,7 +54,8 @@ export function validateBackup(input: unknown): BackupPayload {
     requireValid(date(r.weekStart) && positive(r.isoYear) && positive(r.isoWeek));
     const week = isoWeekInfo(r.date as string);
     requireValid(r.isoYear === week.isoYear && r.isoWeek === week.isoWeek && r.weekStart === week.weekStart);
-    requireValid(r.finishedAt === null ? r.duration === null : timestamp(r.finishedAt) && integer(r.duration) && Date.parse(r.finishedAt as string) >= Date.parse(r.startedAt as string));
+    // v1 used Math.max(0, elapsed). A device clock reversal is valid legacy data.
+    requireValid(r.finishedAt === null ? r.duration === null : timestamp(r.finishedAt) && integer(r.duration));
   }
   // Do not silently repair existing duplicates: users retain the original file.
   const pairs = new Set<string>();

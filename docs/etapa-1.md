@@ -26,7 +26,7 @@ Los archivos v1 estructuralmente válidos siguen siendo importables, incluidos v
 
 Las transacciones no ofrecen sincronización entre dispositivos ni una copia externa. Safari puede suspender el proceso antes de completar una escritura o expulsar almacenamiento por políticas del sistema. Se inicia el guardado al editar, pero solo se indica éxito después de resolver la escritura. Los borradores fallidos permanecen en memoria y no sobreviven a que iOS mate la PWA: mantener backups externos. La resolución de conflictos de edición del mismo campo entre pestañas sigue siendo “última escritura”; no se incorpora bloqueo de interfaz entre pestañas.
 
-No se cambió el service worker en esta etapa. Su activación inmediata y caché de páginas/recursos necesita una revisión propia antes de publicar: probar actualización de PWA y evitar actualizar durante un entrenamiento. Tampoco se cambió el criterio actual de estadísticas/PRs; corregirlo pertenece a la evolución del modelo con las reglas nuevas.
+En la revisión final se corrigió el service worker con activación diferida hasta cerrar clientes, caché versionado y exclusión de respuestas RSC. Ver [revisión final](revision-final-etapa-1.md) para pruebas y límites, especialmente la transición desde el worker original. Tampoco se cambió el criterio actual de estadísticas/PRs; corregirlo pertenece a la evolución del modelo con las reglas nuevas.
 
 ## Estrategia futura de arquitectura (solo documentación)
 
@@ -43,6 +43,8 @@ No se implementaron estas tablas/campos ni funcionalidades de etapa 2.
 
 ## Validaciones
 
+La [revisión final](revision-final-etapa-1.md) amplía estas correcciones con cola FIFO de autoguardado, doble consentimiento de restauración y actualización segura del worker. Es la referencia vigente para pruebas y condiciones de publicación.
+
 Ejecutar `npm run typecheck`, `npm run lint`, `npm test` y `npm run build -- --webpack`.
 
 `npm test` usa Node 22+ (WebSocket global), el webpack incluido por Next y Chromium instalado (`CHROMIUM_PATH` permite especificar su ejecutable). No usa la PWA, ni un perfil de navegador personal. Requiere permiso para abrir puertos locales. Compila la suite en `work/tests`, crea un perfil temporal, ejecuta pruebas y devuelve estado distinto de cero ante fallos.
@@ -51,4 +53,4 @@ La compilación predeterminada `npm run build` con Turbopack falla en este entor
 
 Pendiente validación manual **antes de fusionar/publicar** en un iPhone de prueba con datos sintéticos: edición rápida de peso/reps/RIR, coma decimal, paso a segundo plano/retorno, falta de espacio, recuperación de error, descarga a Archivos, cancelación de restauración, copia previa y actualización/offline del service worker. No se declara Safari/iPhone validado por las pruebas Chromium.
 
-Resultados de esta entrega: TypeScript aprobado (`npm run typecheck`), lint aprobado (`npm run lint`), 17/17 pruebas aprobadas (`npm test`) y compilación de producción con webpack aprobada (`npm run build -- --webpack`). `npm run build` con Turbopack no aprobado por la restricción de puerto descrita arriba. `git diff --check` sin errores. Safari/iPhone físico no ejecutado. Sin despliegue ni fusión a main.
+Resultados de esta entrega: TypeScript aprobado (`npm run typecheck`), lint aprobado (`npm run lint`), 32/32 pruebas aprobadas (`npm test`) y compilación de producción con webpack aprobada (`npm run build -- --webpack`). `npm run build` con Turbopack no aprobado por la restricción de puerto descrita arriba. `git diff --check` sin errores. Safari/iPhone físico no ejecutado. Sin despliegue ni fusión a main.
