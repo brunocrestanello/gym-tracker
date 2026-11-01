@@ -26,15 +26,12 @@ let seedPromise: Promise<void> | null = null;
 /** Asegura que la rutina esté cargada en IndexedDB en la primera apertura. */
 export async function ensureSeeded(): Promise<void> {
   if (seedPromise) return seedPromise;
-  seedPromise = (async () => {
-    const count = await db.exercises.count();
-    if (count === 0) {
-      await db.exercises.bulkAdd(ROUTINE);
-    } else {
-      // Mantener sincronizados nombres/targets/links si la rutina base cambió,
-      // sin tocar el historial de entrenamientos ya registrados.
-      await db.exercises.bulkPut(ROUTINE);
-    }
-  })();
+  seedPromise = db.transaction("rw", db.exercises, async () => {
+    // Solo cargar una base nueva. Nunca sobrescribir metadatos restaurados.
+    if (await db.exercises.count() === 0) await db.exercises.bulkAdd(ROUTINE);
+  }).catch((error) => {
+    seedPromise = null;
+    throw error;
+  });
   return seedPromise;
 }

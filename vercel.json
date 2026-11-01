@@ -1,0 +1,7 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "fix/stage-1-data-integrity": false
+    }
+  }
+}

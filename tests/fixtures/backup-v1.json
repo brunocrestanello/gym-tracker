@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "exportedAt": "2026-10-30T18:00:00.000Z",
+  "exercises": [{"id":"d1-1a","name":"SENTADILLA + GEMELOS","day":1,"order":1,"supersetGroup":null,"supersetLabel":null,"targetSets":3,"targetRepsMin":6,"targetRepsMax":8,"targetRirMin":2,"targetRirMax":2,"videoUrl":null}],
+  "workoutSessions": [{"id":"legacy-workout","date":"2026-10-30","routineDay":1,"startedAt":"2026-10-30T17:00:00.000Z","finishedAt":"2026-10-30T18:00:00.000Z","duration":3600,"isoWeek":44,"isoYear":2026,"weekStart":"2026-10-26","note":"Historial v1"}],
+  "exerciseSessions": [{"id":"legacy-exercise","workoutSessionId":"legacy-workout","exerciseId":"d1-1a","order":1,"note":null}],
+  "sets": [{"id":"legacy-set","exerciseSessionId":"legacy-exercise","setNumber":1,"weight":0,"reps":0,"rir":null,"isPr":false}, {"id":"legacy-empty","exerciseSessionId":"legacy-exercise","setNumber":2,"weight":null,"reps":null,"rir":null,"isPr":false}]
+}
