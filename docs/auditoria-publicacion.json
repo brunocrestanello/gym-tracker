@@ -1,0 +1,43 @@
+{
+  "checkedAtUTC": "2026-11-02",
+  "candidateBranch": "release/gym-tracker-2-readiness",
+  "before": {
+    "info": 0,
+    "low": 0,
+    "moderate": 16,
+    "high": 9,
+    "critical": 1,
+    "total": 26
+  },
+  "afterAllDependencies": {
+    "info": 0,
+    "low": 0,
+    "moderate": 18,
+    "high": 0,
+    "critical": 0,
+    "total": 18
+  },
+  "afterOmitDev": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "unresolvedAdvisory": {
+    "package": "minimatch",
+    "severity": "moderate",
+    "affectedRange": "<11.0.1",
+    "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+    "scope": "development lint tooling; 18 propagated package entries"
+  },
+  "commands": [
+    "npm audit --json",
+    "npm audit --omit=dev --json"
+  ],
+  "notes": [
+    "No force overrides or major upgrades to minimatch.",
+    "An audit result is a registry snapshot, not a guarantee against unknown vulnerabilities."
+  ]
+}
