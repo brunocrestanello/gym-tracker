@@ -10,6 +10,7 @@ import {
 import ExerciseInsights from "../src/components/ExerciseInsights";
 import ExerciseReference from "../src/components/ExerciseReference";
 import ThemeToggle from "../src/components/ThemeToggle";
+import ServiceWorkerRegister from "../src/components/ServiceWorkerRegister";
 import legacy from "./fixtures/backup-v1.json";
 import { isoWeekInfo } from "../src/lib/dates";
 const consent = { replaceExisting: true, unverifiedCopyAcknowledged: true };
@@ -351,6 +352,44 @@ export async function runInsightsTests({ test, assert, equal }) {
       box.remove();
       if (prior === null) localStorage.removeItem(key);
       else localStorage.setItem(key, prior);
+    }
+  });
+  await test("PWA notice ignores first install and clears after a waiting update activates", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      navigator,
+      "serviceWorker",
+    );
+    const registration = new EventTarget();
+    registration.active = null;
+    registration.waiting = {};
+    registration.installing = new EventTarget();
+    const mock = { register: async () => registration };
+    Object.defineProperty(navigator, "serviceWorker", {
+      configurable: true,
+      value: mock,
+    });
+    const box = document.createElement("div");
+    document.body.append(box);
+    const root = createRoot(box);
+    try {
+      root.render(React.createElement(ServiceWorkerRegister));
+      await new Promise((r) => setTimeout(r, 30));
+      assert(
+        !box.querySelector("[role=status]"),
+        "First install is not an update",
+      );
+      registration.active = {};
+      registration.dispatchEvent(new Event("updatefound"));
+      await until(() => box.querySelector("[role=status]"));
+      registration.waiting = null;
+      registration.installing.dispatchEvent(new Event("statechange"));
+      await until(() => !box.querySelector("[role=status]"));
+    } finally {
+      root.unmount();
+      box.remove();
+      if (descriptor)
+        Object.defineProperty(navigator, "serviceWorker", descriptor);
+      else delete navigator.serviceWorker;
     }
   });
 }

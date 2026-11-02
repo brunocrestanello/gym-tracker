@@ -30,11 +30,11 @@ El gráfico permite peso, reps, series y volumen, períodos 1/3/6 meses y todo e
 
 Tema claro/oscuro recordado en `gym-tracker:theme:v1`; preferencia de sistema como valor inicial. Si falla localStorage, el tema cambia y se informa que no se pudo recordar. La preferencia no se incluye en los backups de entrenamientos. Se permite zoom y se conservan inputs de al menos 16 px y botones de al menos 44 px. El temporizador flota encima del botón inferior de finalizar. Los grupos de tres ejercicios distinguen inicio/medio/final, con registros independientes.
 
-El service worker incrementa su caché a v4, conservando activación en espera, sin `skipWaiting`, `clients.claim` ni recargas forzadas. No se promete un modo offline completo nuevo.
+El service worker incrementa su caché a v4, conservando activación en espera, sin `skipWaiting`, `clients.claim` ni recargas forzadas. El aviso distingue instalación inicial de actualización y se oculta cuando ya no existe un worker esperando. No se promete un modo offline completo nuevo.
 
 ## Validación automatizada
 
-- `npm test`: 59/59 pruebas en Chromium real con IndexedDB nativo. Incluye las 50 regresiones de Etapas 1 y 2 y nueve nuevas pruebas de métricas, 0 kg, incompletos, sesiones activas/omitidas, identidades congeladas, no escritura en lecturas, récords tras edición/eliminación, finalización sin PR persistidos, interacción del gráfico, referencias reactivas, errores de lectura y temas con storage denegado.
+- `npm test`: 60/60 pruebas en Chromium real con IndexedDB nativo. Incluye las 50 regresiones de Etapas 1 y 2 y diez nuevas pruebas de métricas, 0 kg, incompletos, sesiones activas/omitidas, identidades congeladas, no escritura en lecturas, récords tras edición/eliminación, finalización sin PR persistidos, interacción del gráfico, referencias reactivas, errores de lectura y temas con storage denegado.
 - `npm run lint`, `npm run typecheck`, `git diff --check` y `npm run build`: comprobados localmente. El build estándar usa Turbopack; no se cambia a Webpack para desplegar.
 - El despliegue de prueba requiere verificar equipo `bruno-1e73`, proyecto `gym-tracker-etapa1-test` (`prj_RiISqPbY7TMSpBhLhj1wyoQG7qwZ`), ausencia de integración Git y alias independiente. Se prepara un build sin mover el dominio estable, se prueba la URL candidata y luego se asigna exclusivamente el dominio de prueba.
 
