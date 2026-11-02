@@ -7,7 +7,7 @@ const path = require('node:path');
 const http = require('node:http');
 (async () => {
   mkdirSync('work', { recursive: true });
-  await new Promise((resolve, reject) => webpack({ mode: 'development', devtool: false, entry: path.resolve('tests/browser.js'), output: { path: path.resolve('work/tests'), filename: 'suite.js' }, resolve: { extensions: ['.ts', '.tsx', '.js'], alias: { '@': path.resolve('src') } }, module: { rules: [{ test: /\.tsx?$/, use: path.resolve('tests/ts-loader.cjs') }] } }, (error, stats) => error || stats.hasErrors() ? reject(error || Error(stats.toString())) : resolve()));
+  await new Promise((resolve, reject) => webpack({ mode: 'development', devtool: false, plugins: [new webpack.ProvidePlugin({process:require.resolve('next/dist/build/polyfills/process')})], entry: path.resolve('tests/browser.js'), output: { path: path.resolve('work/tests'), filename: 'suite.js' }, resolve: { extensions: ['.ts', '.tsx', '.js'], alias: { '@': path.resolve('src') } }, module: { rules: [{ test: /\.tsx?$/, use: path.resolve('tests/ts-loader.cjs') }] } }, (error, stats) => error || stats.hasErrors() ? reject(error || Error(stats.toString())) : resolve()));
   const profile = mkdtempSync(path.join(tmpdir(), 'gym-tracker-test-'));
   const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://localhost');
@@ -15,7 +15,7 @@ const http = require('node:http');
     if (url.pathname === '/sw-test/sw.js') {
       res.setHeader('Content-Type','application/javascript; charset=utf-8');
       const legacy = url.searchParams.get('version') === '1';
-      res.end(readFileSync(legacy ? 'tests/fixtures/sw-original.js' : 'public/sw.js','utf8').replace(legacy ? 'rutina-bruno-v1' : 'rutina-bruno-v2', 'rutina-bruno-test-' + url.searchParams.get('version')));
+      res.end(readFileSync(legacy ? 'tests/fixtures/sw-original.js' : 'public/sw.js','utf8').replace(/rutina-bruno-v\d+/, 'rutina-bruno-test-' + url.searchParams.get('version')));
     } else if (url.pathname === '/manifest.json') {
       res.setHeader('Content-Type','application/json'); res.end('{}');
     } else if (url.pathname.startsWith('/sw-test/')) {
@@ -40,12 +40,14 @@ const http = require('node:http');
     ws = new WebSocket(endpoint);
     await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
     let id = 0;
+    const runtimeErrors=[];
     const callbacks = new Map();
-    ws.onmessage = ({data}) => { const message = JSON.parse(data); if (callbacks.has(message.id)) { const {resolve,reject} = callbacks.get(message.id); callbacks.delete(message.id); if (message.error) reject(Error(JSON.stringify(message.error))); else resolve(message.result); } };
+    ws.onmessage = ({data}) => { const message = JSON.parse(data); if(message.method === "Runtime.exceptionThrown") runtimeErrors.push(message.params.exceptionDetails.exception?.description || message.params.exceptionDetails.text); if (callbacks.has(message.id)) { const {resolve,reject} = callbacks.get(message.id); callbacks.delete(message.id); if (message.error) reject(Error(JSON.stringify(message.error))); else resolve(message.result); } };
     const send = (method, params = {}, sessionId) => new Promise((resolve,reject) => { const next = ++id; callbacks.set(next, {resolve,reject}); ws.send(JSON.stringify({id: next, method, params, sessionId})); });
     const {targetId} = await send('Target.createTarget', {url: 'about:blank'});
     const {sessionId} = await send('Target.attachToTarget', {targetId, flatten: true});
     await send('Page.enable', {}, sessionId);
+    await send('Runtime.enable', {}, sessionId);
     await send('Page.navigate', {url: `http://127.0.0.1:${server.address().port}`}, sessionId);
     let result;
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -53,7 +55,7 @@ const http = require('node:http');
       if (result.result.value) break;
       await new Promise(r => setTimeout(r, 100));
     }
-    if (!result.result.value) throw Error('No test result: ' + JSON.stringify(result));
+    if (!result.result.value) throw Error('No test result: ' + JSON.stringify(result) + '\n' + runtimeErrors.join('\n'));
     for (const test of result.result.value) console.log(`${test.error ? 'FAIL' : 'PASS'} ${test.name}${test.error ? '\n' + test.error : ''}`);
     if (result.result.value.some(t => t.error)) process.exitCode = 1;
     console.log(`${result.result.value.filter(t => !t.error).length}/${result.result.value.length} passed`);

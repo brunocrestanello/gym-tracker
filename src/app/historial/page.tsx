@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { ROUTINE } from "@/data/routine";
+import { getExerciseCatalog } from "@/lib/workouts";
 import { formatDateShort } from "@/lib/dates";
 import { ChevronLeft } from "lucide-react";
 
 export default function HistorialPage() {
+  const catalog=useLiveQuery(getExerciseCatalog,[]);
   const [dayFilter, setDayFilter] = useState<string>("todos");
   const [exerciseFilter, setExerciseFilter] = useState<string>("todos");
   const [weekFilter, setWeekFilter] = useState<string>("todas");
@@ -78,7 +79,7 @@ export default function HistorialPage() {
           className="shrink-0 bg-surface-2 border border-border-soft rounded-lg px-2.5 py-1.5 text-xs text-text max-w-[45%]"
         >
           <option value="todos">Todos los ejercicios</option>
-          {ROUTINE.map((e) => (
+          {(catalog ?? []).map((e) => (
             <option key={e.id} value={e.id}>
               {e.name}
             </option>

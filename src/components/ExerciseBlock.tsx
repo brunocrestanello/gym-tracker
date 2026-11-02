@@ -7,7 +7,12 @@ import { db } from "@/lib/db";
 import { Exercise, SetEntry } from "@/lib/types";
 import { addSet, getPreviousExerciseData } from "@/lib/repo";
 import { formatDateShort } from "@/lib/dates";
-import { ExternalLink, Plus, TrendingUp, Timer as TimerIcon } from "lucide-react";
+import {
+  ExternalLink,
+  Plus,
+  TrendingUp,
+  Timer as TimerIcon,
+} from "lucide-react";
 import { useRestTimer } from "@/components/RestTimer";
 import SetRow from "@/components/SetRow";
 
@@ -16,19 +21,37 @@ export default function ExerciseBlock({
   exercise,
   workoutSessionId,
   supersetPosition,
+  entries,
+  onSave,
+  onDelete,
+  onAdd,
 }: {
   exerciseSessionId: string;
   exercise: Exercise;
   workoutSessionId: string;
   supersetPosition: "single" | "first" | "last";
+  entries?: SetEntry[];
+  onSave?: (
+    id: string,
+    patch: Partial<Pick<SetEntry, "weight" | "reps" | "rir">>,
+  ) => Promise<void>;
+  onDelete?: (id: string) => Promise<void>;
+  onAdd?: () => Promise<void>;
 }) {
-  const sets = useLiveQuery(
-    () => db.sets.where("exerciseSessionId").equals(exerciseSessionId).sortBy("setNumber"),
-    [exerciseSessionId]
+  const storedSets = useLiveQuery(
+    () =>
+      entries
+        ? []
+        : db.sets
+            .where("exerciseSessionId")
+            .equals(exerciseSessionId)
+            .sortBy("setNumber"),
+    [exerciseSessionId, Boolean(entries)],
   );
-  const [previous, setPrevious] = useState<{ date: string; sets: SetEntry[] } | null | undefined>(
-    undefined
-  );
+  const sets = entries ?? storedSets;
+  const [previous, setPrevious] = useState<
+    { date: string; sets: SetEntry[] } | null | undefined
+  >(undefined);
   const [error, setError] = useState<string | null>(null);
   const [showTimer, setShowTimer] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("");
@@ -36,9 +59,13 @@ export default function ExerciseBlock({
 
   useEffect(() => {
     let mounted = true;
-    getPreviousExerciseData(exercise.id, workoutSessionId).then((res) => {
-      if (mounted) setPrevious(res);
-    }).catch(() => { if (mounted) setError("No se pudo leer la referencia anterior."); });
+    getPreviousExerciseData(exercise.id, workoutSessionId)
+      .then((res) => {
+        if (mounted) setPrevious(res);
+      })
+      .catch(() => {
+        if (mounted) setError("No se pudo leer la referencia anterior.");
+      });
     return () => {
       mounted = false;
     };
@@ -72,7 +99,9 @@ export default function ExerciseBlock({
 
       <div className="flex items-start justify-between gap-2 mb-1">
         <div className="flex items-center gap-1.5 min-w-0">
-          <h3 className="text-[15px] font-semibold text-text leading-snug">{exercise.name}</h3>
+          <h3 className="text-[15px] font-semibold text-text leading-snug">
+            {exercise.name}
+          </h3>
           {exercise.videoUrl && (
             <a
               href={exercise.videoUrl}
@@ -99,9 +128,13 @@ export default function ExerciseBlock({
       {/* Referencia anterior */}
       <div className="rounded-lg bg-surface-2/60 border border-border-soft px-3 py-2 mb-3">
         {previous === undefined ? (
-          <div className="text-xs text-text-tertiary">Cargando referencia\u2026</div>
+          <div className="text-xs text-text-tertiary">
+            Cargando referencia\u2026
+          </div>
         ) : previous === null ? (
-          <div className="text-xs text-text-tertiary">Sin registros anteriores</div>
+          <div className="text-xs text-text-tertiary">
+            Sin registros anteriores
+          </div>
         ) : (
           <>
             <div className="text-[11px] text-text-secondary mb-1">
@@ -111,9 +144,12 @@ export default function ExerciseBlock({
               {previous.sets
                 .filter((s) => s.weight != null || s.reps != null)
                 .map((s) => (
-                  <span key={s.id} className="text-xs font-mono tabular text-text-secondary">
-                    {s.setNumber} · {s.weight ?? "\u2014"}kg · {s.reps ?? "\u2014"}r
-                    {s.rir != null ? ` · RIR${s.rir}` : ""}
+                  <span
+                    key={s.id}
+                    className="text-xs font-mono tabular text-text-secondary"
+                  >
+                    {s.setNumber} · {s.weight ?? "\u2014"}kg ·{" "}
+                    {s.reps ?? "\u2014"}r{s.rir != null ? ` · RIR${s.rir}` : ""}
                   </span>
                 ))}
             </div>
@@ -121,7 +157,11 @@ export default function ExerciseBlock({
         )}
       </div>
 
-      {error && <p role="alert" className="text-xs">{error}</p>}
+      {error && (
+        <p role="alert" className="text-xs">
+          {error}
+        </p>
+      )}
       {/* Tabla de series */}
       <div className="grid grid-cols-[28px_1fr_1fr_1fr_28px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
         <div className="text-center">#</div>
@@ -136,16 +176,26 @@ export default function ExerciseBlock({
             key={s.id}
             set={s}
             placeholderWeight={
-              previous?.sets.find((p) => p.setNumber === s.setNumber)?.weight ?? null
+              previous?.sets.find((p) => p.setNumber === s.setNumber)?.weight ??
+              null
             }
             canDelete={(sets?.length ?? 0) > 1}
             onChanged={() => {}}
+            onSave={onSave}
+            onDelete={onDelete}
           />
         ))}
       </div>
 
       <button
-        onClick={async () => { try { await addSet(exerciseSessionId); setError(null); } catch { setError("No se pudo agregar la serie. Reintentá."); } }}
+        onClick={async () => {
+          try {
+            await (onAdd ? onAdd() : addSet(exerciseSessionId));
+            setError(null);
+          } catch {
+            setError("No se pudo agregar la serie. Reintentá.");
+          }
+        }}
         className="mt-2 w-full flex items-center justify-center gap-1.5 text-accent text-sm py-2 rounded-lg active:bg-accent-soft"
       >
         <Plus size={15} /> Agregar serie
@@ -179,7 +229,9 @@ export default function ExerciseBlock({
             type="text"
             inputMode="numeric"
             value={customSeconds}
-            onChange={(e) => setCustomSeconds(e.target.value.replace(/[^0-9]/g, ""))}
+            onChange={(e) =>
+              setCustomSeconds(e.target.value.replace(/[^0-9]/g, ""))
+            }
             placeholder="Otro"
             className="w-16 px-2 py-1.5 rounded-lg bg-surface-2 border border-border-soft text-xs text-center text-text placeholder:text-text-tertiary focus:outline-none focus:border-accent"
           />

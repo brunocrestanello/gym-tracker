@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { exercisesForDay } from "@/data/routine";
+import { useLiveQuery } from "dexie-react-hooks";
+import { getExerciseCatalog } from "@/lib/workouts";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function ProgresoPage() {
+  const catalog=useLiveQuery(getExerciseCatalog,[]);
   return (
     <div className="min-h-dvh pb-10">
       <header className="safe-top sticky top-0 z-30 bg-bg/90 backdrop-blur border-b border-border-soft px-4 py-3 flex items-center gap-3">
@@ -24,7 +26,7 @@ export default function ProgresoPage() {
             Día {day}
           </p>
           <div className="flex flex-col">
-            {exercisesForDay(day as 1 | 2 | 3 | 4).map((ex) => (
+            {(catalog ?? []).filter(ex=>ex.day===day).map((ex) => (
               <Link
                 key={ex.id}
                 href={`/ejercicio/${ex.id}`}

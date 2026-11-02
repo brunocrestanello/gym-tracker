@@ -7,8 +7,8 @@ import { formatDateShort } from "@/lib/dates";
 import { History, LineChart, Settings } from "lucide-react";
 
 const DAY_FOCUS: Record<number, string> = {
-  1: "Pecho · Hombro · Brazo",
-  2: "Pierna post. · Pecho · Espalda",
+  1: "Femoral · Pecho · Hombro · Brazo",
+  2: "Sentadilla · Pecho · Espalda · Brazo",
   3: "Pierna · Pecho · Espalda",
   4: "Pierna post. · Espalda · Brazo",
 };

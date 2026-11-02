@@ -11,7 +11,7 @@ import {
 import { persist, waitForWrites } from "@/lib/persistence";
 import { WorkoutSessionFull } from "@/lib/types";
 import { formatDateShort, formatDuration } from "@/lib/dates";
-import { sumVolume } from "@/lib/calculations";
+import { sumVolume, isValidSet } from "@/lib/calculations";
 import SetRow from "@/components/SetRow";
 import { ChevronLeft, Trash2 } from "lucide-react";
 
@@ -69,7 +69,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
     0
   );
   const totalSets = session.exerciseSessions.reduce(
-    (acc, es) => acc + es.sets.filter((s) => s.weight != null && s.reps != null).length,
+    (acc, es) => acc + es.sets.filter(isValidSet).length,
     0
   );
 
@@ -113,6 +113,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       <div className="px-4 flex flex-col gap-3 mt-2">
         {session.exerciseSessions.map((es) => (
           <div key={es.id} className="rounded-2xl bg-surface border border-border-soft px-4 py-3">
+            {es.status==="omitted" && <p className="text-xs text-text-secondary">Omitido · sin series registradas</p>}
+            {es.origin==="substitution" && <p className="text-xs text-text-secondary">Ejercicio sustituto</p>}
+            {es.origin==="additional" && <p className="text-xs text-text-secondary">Ejercicio adicional</p>}
             <h3 className="text-[15px] font-semibold text-text mb-2">{es.exercise.name}</h3>
             <div className="grid grid-cols-[28px_1fr_1fr_1fr_28px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
               <div className="text-center">#</div>
