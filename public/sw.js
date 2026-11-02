@@ -1,4 +1,4 @@
-const CACHE_NAME = "rutina-bruno-v3";
+const CACHE_NAME = "rutina-bruno-v4";
 const CACHE_PREFIX = "rutina-bruno-";
 const OFFLINE_URL = "/";
 

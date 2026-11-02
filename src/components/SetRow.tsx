@@ -4,7 +4,6 @@ import { useRef, useState } from "react";
 import { SetEntry } from "@/lib/types";
 import { updateSet, removeSet } from "@/lib/repo";
 import { persist, forgetDeletedSetFailures } from "@/lib/persistence";
-import { isValidSet } from "@/lib/calculations";
 import { Trash2 } from "lucide-react";
 
 export default function SetRow({
@@ -83,7 +82,7 @@ export default function SetRow({
     <div>
       <fieldset
         disabled={deleting}
-        className="grid grid-cols-[28px_1fr_1fr_1fr_28px] items-center gap-2 py-1.5"
+        className="grid grid-cols-[24px_1fr_1fr_1fr_44px] items-center gap-2 py-1.5"
       >
         <div className="text-sm text-text-tertiary tabular text-center">
           {set.setNumber}
@@ -91,6 +90,7 @@ export default function SetRow({
 
         <div className="relative">
           <input
+            aria-label={`Peso de serie ${set.setNumber}`}
             ref={weightRef}
             key={`${set.id}-w`}
             type="text"
@@ -102,14 +102,10 @@ export default function SetRow({
             onChange={(e) => save("weight", e.target.value)}
             className="w-full rounded-lg bg-surface-2 border border-border-soft px-2.5 py-2.5 text-center font-mono tabular text-base text-text placeholder:text-text-tertiary focus:outline-none focus:border-accent"
           />
-          {set.isPr && isValidSet(set) && (
-            <span className="absolute -top-2 -right-1.5 text-[10px] font-semibold text-brass bg-brass-soft px-1.5 py-0.5 rounded-full leading-none">
-              PR
-            </span>
-          )}
         </div>
 
         <input
+          aria-label={`Repeticiones de serie ${set.setNumber}`}
           ref={repsRef}
           key={`${set.id}-r`}
           type="text"
@@ -121,6 +117,7 @@ export default function SetRow({
         />
 
         <input
+          aria-label={`RIR de serie ${set.setNumber}`}
           ref={rirRef}
           key={`${set.id}-i`}
           type="text"
@@ -163,7 +160,7 @@ export default function SetRow({
                 setDeleting(false);
               }
             }}
-            className="h-7 w-7 flex items-center justify-center text-text-tertiary active:text-danger"
+            className="h-11 w-11 flex items-center justify-center text-text-tertiary active:text-danger"
             aria-label="Eliminar serie"
           >
             <Trash2 size={15} />
