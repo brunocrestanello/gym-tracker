@@ -45,13 +45,14 @@ const PERIOD_DAYS: Record<Period, number | null> = {
 export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const exercise = exerciseById(id);
+  const [error, setError] = useState(false);
   const [history, setHistory] = useState<{ session: WorkoutSession; sets: SetEntry[] }[]>([]);
   const [metric, setMetric] = useState<Metric>("maxWeight");
   const [period, setPeriod] = useState<Period>("3m");
   const [now] = useState(() => Date.now());
 
   useEffect(() => {
-    getExerciseHistory(id).then(setHistory);
+    getExerciseHistory(id).then(setHistory).catch(() => setError(true));
   }, [id]);
 
   const chartData = useMemo(() => {
@@ -90,7 +91,9 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
   const lastFour = useMemo(() => history.slice(0, 4).reverse(), [history]);
 
   if (!exercise) {
-    return (
+    if (error) return <p role="alert" className="p-6">No se pudo leer el historial. <button onClick={() => location.reload()}>Reintentar</button></p>;
+
+  return (
       <div className="min-h-dvh flex items-center justify-center text-text-secondary text-sm">
         Ejercicio no encontrado.
       </div>

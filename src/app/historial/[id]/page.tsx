@@ -8,6 +8,7 @@ import {
   getWorkoutSessionFull,
   updateWorkoutSessionNote,
 } from "@/lib/repo";
+import { persist, waitForWrites } from "@/lib/persistence";
 import { WorkoutSessionFull } from "@/lib/types";
 import { formatDateShort, formatDuration } from "@/lib/dates";
 import { sumVolume } from "@/lib/calculations";
@@ -20,6 +21,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
   const searchParams = useSearchParams();
   const completed = searchParams.get("completed") === "1";
 
+  const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<WorkoutSessionFull | null | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
@@ -32,17 +34,20 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de datos async estándar
-    load();
+    load().catch(() => setError("No se pudo leer el entrenamiento. Reintentá recargando."));
   }, [load]);
 
   async function handleDelete() {
-    await deleteSession(id);
-    router.push("/historial");
+    try { await waitForWrites(); await deleteSession(id); router.push("/historial"); }
+    catch { setError("No se pudo eliminar. Reintentá después de guardar los cambios pendientes."); }
   }
 
   async function saveNote() {
-    await updateWorkoutSessionNote(id, noteDraft.trim() || null);
+    try { await persist(`${id}:note`, () => updateWorkoutSessionNote(id, noteDraft.trim() || null)); setError(null); }
+    catch { setError("La nota no se guardó. Volvé a intentar."); }
   }
+
+  if (error && session === undefined) return <p role="alert" className="p-6">{error} <button onClick={() => location.reload()}>Reintentar</button></p>;
 
   if (session === undefined) {
     return (
@@ -70,6 +75,7 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-dvh pb-10">
+      {error && <p role="alert" className="p-4">{error}</p>}
       <header className="safe-top sticky top-0 z-30 bg-bg/90 backdrop-blur border-b border-border-soft px-4 py-3 flex items-center gap-3">
         <Link href={completed ? "/" : "/historial"} className="text-text-secondary active:text-text">
           <ChevronLeft size={22} />

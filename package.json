@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node tests/run.cjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "date-fns": "^4.4.0",

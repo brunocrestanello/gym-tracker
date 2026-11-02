@@ -29,6 +29,7 @@ export default function ExerciseBlock({
   const [previous, setPrevious] = useState<{ date: string; sets: SetEntry[] } | null | undefined>(
     undefined
   );
+  const [error, setError] = useState<string | null>(null);
   const [showTimer, setShowTimer] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("");
   const timer = useRestTimer();
@@ -37,7 +38,7 @@ export default function ExerciseBlock({
     let mounted = true;
     getPreviousExerciseData(exercise.id, workoutSessionId).then((res) => {
       if (mounted) setPrevious(res);
-    });
+    }).catch(() => { if (mounted) setError("No se pudo leer la referencia anterior."); });
     return () => {
       mounted = false;
     };
@@ -120,6 +121,7 @@ export default function ExerciseBlock({
         )}
       </div>
 
+      {error && <p role="alert" className="text-xs">{error}</p>}
       {/* Tabla de series */}
       <div className="grid grid-cols-[28px_1fr_1fr_1fr_28px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
         <div className="text-center">#</div>
@@ -143,7 +145,7 @@ export default function ExerciseBlock({
       </div>
 
       <button
-        onClick={() => addSet(exerciseSessionId)}
+        onClick={async () => { try { await addSet(exerciseSessionId); setError(null); } catch { setError("No se pudo agregar la serie. Reintentá."); } }}
         className="mt-2 w-full flex items-center justify-center gap-1.5 text-accent text-sm py-2 rounded-lg active:bg-accent-soft"
       >
         <Plus size={15} /> Agregar serie
