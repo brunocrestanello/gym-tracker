@@ -1,3 +1,5 @@
+import * as workoutRepo from '../src/lib/workouts';
+import {runStage2Tests} from './stage2';
 import { db, GymDatabase, ensureSeeded } from '../src/lib/db';
 import * as repo from '../src/lib/repo';
 import { validateBackup } from '../src/lib/backup';
@@ -15,7 +17,7 @@ const results = [];
 const assert = (ok, message = 'Assertion failed') => { if (!ok) throw Error(message); };
 const equal = (a,b) => assert(JSON.stringify(a) === JSON.stringify(b), 'Values differ');
 const rejects = async fn => { let failed = false; try { await fn(); } catch { failed = true; } assert(failed, 'Expected rejection'); };
-const snapshot = async () => { const {exportedAt, ...data} = await repo.exportBackup(); void exportedAt; return data; };
+const snapshot = async () => { const p=await repo.exportBackup(); return {version:1,exercises:p.exercises,workoutSessions:p.workoutSessions,exerciseSessions:p.exerciseSessions,sets:p.sets}; };
 const test = async (name, fn) => { try { await fn(); results.push({name}); } catch (error) { results.push({name, error: error.stack || String(error)}); } };
 async function inject(table, operation, fn) {
   const fail = () => { throw Error('Injected storage failure'); };
@@ -23,6 +25,7 @@ async function inject(table, operation, fn) {
   try { await fn(); } finally { db[table].hook(operation).unsubscribe(fail); }
 }
 window.repo = repo;
+window.workouts=workoutRepo;
 window.ensureSeeded = ensureSeeded;
 if (!location.search.includes("peer")) window.testResults = (async () => {
   await ensureSeeded();
@@ -74,9 +77,9 @@ if (!location.search.includes("peer")) window.testResults = (async () => {
     equal(await snapshot(), before);
     assert(first.setCount === 1 && first.totalVolume === 340);
   });
-  await test('Export v1 round trips JSON without changing rows', async () => {
+  await test('Export v2 round trips JSON without changing rows', async () => {
     backup = await repo.exportBackup();
-    assert(backup.version === 1);
+    assert(backup.version === 2);
     equal(validateBackup(JSON.parse(JSON.stringify(backup))), backup);
     const before = await snapshot();
     await restore(JSON.parse(JSON.stringify(backup)));
@@ -86,7 +89,7 @@ if (!location.search.includes("peer")) window.testResults = (async () => {
     const before = await snapshot();
     await rejects(() => Promise.resolve(JSON.parse('{bad')));
     for (const mutate of [
-      p=>p.version=2, p=>delete p.sets, p=>p.sets[0].weight='5', p=>p.sets[0].reps=-1,
+      p=>p.version=99, p=>delete p.sets, p=>p.sets[0].weight='5', p=>p.sets[0].reps=-1,
       p=>p.sets[0].isPr=1, p=>p.sets[0].exerciseSessionId='orphan', p=>p.exerciseSessions[0].exerciseId='unknown',
       p=>p.exerciseSessions[0].workoutSessionId='unknown', p=>p.workoutSessions[0].date='2026-02-30',
       p=>p.workoutSessions[0].isoWeek=90, p=>p.exercises[0].targetSets=0,
@@ -414,5 +417,6 @@ if (!location.search.includes("peer")) window.testResults = (async () => {
       await until(async()=>!(await db.sets.get(row.id)));await waitForWrites();
     } finally {root.unmount();container.remove();}
   });
+  await runStage2Tests({test,assert,equal,rejects});
   return results;
 })();

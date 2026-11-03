@@ -11,7 +11,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { exerciseById } from "@/data/routine";
+import { useLiveQuery } from "dexie-react-hooks";
+import { getExerciseCatalog } from "@/lib/workouts";
+import { isValidSet } from "@/lib/calculations";
 import { getExerciseHistory } from "@/lib/repo";
 import { bestE1rm, maxReps as maxRepsFn, maxWeight as maxWeightFn, round1, sumVolume } from "@/lib/calculations";
 import { formatDateShort } from "@/lib/dates";
@@ -44,7 +46,8 @@ const PERIOD_DAYS: Record<Period, number | null> = {
 
 export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const exercise = exerciseById(id);
+  const catalog=useLiveQuery(getExerciseCatalog,[]);
+  const exercise=catalog?.find(ex=>ex.id===id);
   const [error, setError] = useState(false);
   const [history, setHistory] = useState<{ session: WorkoutSession; sets: SetEntry[] }[]>([]);
   const [metric, setMetric] = useState<Metric>("maxWeight");
@@ -61,7 +64,7 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
     return history
       .filter((h) => !cutoff || new Date(h.session.date).getTime() >= cutoff)
       .map((h) => {
-        const validSets = h.sets.filter((s) => s.weight != null && s.reps != null);
+        const validSets = h.sets.filter(isValidSet);
         let value = 0;
         if (metric === "maxWeight") value = maxWeightFn(validSets);
         if (metric === "e1rm") value = round1(bestE1rm(validSets));
@@ -78,9 +81,9 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
     const recent = history.filter((h) => new Date(h.session.date).getTime() >= cutoff);
     if (recent.length < 2) return null;
     const sorted = [...recent].sort((a, b) => (a.session.date < b.session.date ? -1 : 1));
-    const first = bestE1rm(sorted[0].sets.filter((s) => s.weight != null && s.reps != null));
+    const first = bestE1rm(sorted[0].sets.filter(isValidSet));
     const last = bestE1rm(
-      sorted[sorted.length - 1].sets.filter((s) => s.weight != null && s.reps != null)
+      sorted[sorted.length - 1].sets.filter(isValidSet)
     );
     if (!first || !last) return null;
     const pct = ((last - first) / first) * 100;
@@ -90,9 +93,9 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
 
   const lastFour = useMemo(() => history.slice(0, 4).reverse(), [history]);
 
+  if(error)return <p role="alert" className="p-6">No se pudo leer el historial. <button onClick={()=>location.reload()}>Reintentar</button></p>;
+  if(!catalog)return <p className="p-6">Cargando ejercicio…</p>;
   if (!exercise) {
-    if (error) return <p role="alert" className="p-6">No se pudo leer el historial. <button onClick={() => location.reload()}>Reintentar</button></p>;
-
   return (
       <div className="min-h-dvh flex items-center justify-center text-text-secondary text-sm">
         Ejercicio no encontrado.
@@ -196,12 +199,12 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
           <div className="rounded-xl bg-surface-2/60 border border-border-soft px-3 py-2 mb-4">
             <p className="text-[11px] text-text-tertiary mb-1">Últimas {lastFour.length} sesiones</p>
             <p className="text-xs text-text-secondary tabular">
-              Peso máximo: {lastFour.map((h) => maxWeightFn(h.sets.filter((s) => s.weight != null))).join(" \u2192 ")} kg
+              Peso máximo: {lastFour.map((h) => maxWeightFn(h.sets.filter(isValidSet))).join(" \u2192 ")} kg
             </p>
             <p className="text-xs text-text-secondary tabular">
               e1RM:{" "}
               {lastFour
-                .map((h) => round1(bestE1rm(h.sets.filter((s) => s.weight != null && s.reps != null))))
+                .map((h) => round1(bestE1rm(h.sets.filter(isValidSet))))
                 .join(" \u2192 ")}{" "}
               kg
             </p>
@@ -226,7 +229,7 @@ export default function ExerciseHistoryPage({ params }: { params: Promise<{ id: 
                       <span>
                         {s.weight ?? "\u2014"} × {s.reps ?? "\u2014"}
                       </span>
-                      {s.isPr && (
+                      {s.isPr && isValidSet(s) && (
                         <span className="text-[10px] font-semibold text-brass bg-brass-soft px-1.5 py-0.5 rounded-full leading-none">
                           PR
                         </span>

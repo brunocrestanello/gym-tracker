@@ -26,9 +26,12 @@ export interface WorkoutSession {
   isoYear: number;
   weekStart: string; // YYYY-MM-DD (Monday)
   note: string | null;
+  templateId?: string;
 }
 
 export interface ExerciseSession {
+  origin?: ExerciseOrigin;
+  status?: ExerciseStatus;
   id: string;
   workoutSessionId: string;
   exerciseId: string;
@@ -56,7 +59,7 @@ export interface WorkoutSessionFull extends WorkoutSession {
   exerciseSessions: ExerciseSessionWithSets[];
 }
 
-export interface BackupPayload {
+export interface BackupV1 {
   version: 1;
   exportedAt: string;
   exercises: Exercise[];
@@ -67,3 +70,44 @@ export interface BackupPayload {
 
 export type MetricType = "maxWeight" | "e1rm" | "volume" | "maxReps";
 export type PeriodType = "1m" | "3m" | "6m" | "all";
+
+export interface RoutineTemplate {
+  id: string;
+  name: string;
+  exercises: Exercise[];
+}
+export type ExerciseOrigin = "template" | "substitution" | "additional";
+export type ExerciseStatus = "pending" | "performed" | "omitted";
+export interface ExerciseSnapshot {
+  id: string; // exerciseSessionId, never a position in the current routine
+  exercise: Exercise;
+  plannedExercise: Exercise | null;
+  provenance:
+    | "captured"
+    | "legacy-catalog"
+    | "legacy-fallback"
+    | "legacy-unknown";
+}
+export interface DraftExercise {
+  id: string;
+  exercise: Exercise;
+  plannedExercise: Exercise | null;
+  origin: ExerciseOrigin;
+  status: ExerciseStatus;
+  sets: SetEntry[];
+}
+export interface WorkoutDraft {
+  id: string; // one draft per original day
+  token: string; // guards stale windows after finish/discard/restore
+  day: RoutineDay;
+  templateId: string;
+  sessionId: string | null;
+  exercises: DraftExercise[];
+}
+export interface BackupV2 extends Omit<BackupV1, "version"> {
+  version: 2;
+  templates: RoutineTemplate[];
+  exerciseSnapshots: ExerciseSnapshot[];
+  workoutDrafts: WorkoutDraft[];
+}
+export type BackupPayload = BackupV1 | BackupV2;

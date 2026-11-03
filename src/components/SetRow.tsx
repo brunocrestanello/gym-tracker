@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { SetEntry } from "@/lib/types";
 import { updateSet, removeSet } from "@/lib/repo";
-import { persist } from "@/lib/persistence";
+import { persist, forgetDeletedSetFailures } from "@/lib/persistence";
+import { isValidSet } from "@/lib/calculations";
 import { Trash2 } from "lucide-react";
 
 export default function SetRow({
@@ -11,11 +12,18 @@ export default function SetRow({
   placeholderWeight,
   canDelete,
   onChanged,
+  onSave,
+  onDelete,
 }: {
   set: SetEntry;
   placeholderWeight: number | null;
   canDelete: boolean;
   onChanged: () => void;
+  onSave?: (
+    setId: string,
+    patch: Partial<Pick<SetEntry, "weight" | "reps" | "rir">>,
+  ) => Promise<void>;
+  onDelete?: (setId: string) => Promise<void>;
 }) {
   const weightRef = useRef<HTMLInputElement>(null);
   const repsRef = useRef<HTMLInputElement>(null);
@@ -26,7 +34,9 @@ export default function SetRow({
   const [deleteError, setDeleteError] = useState(false);
   const [status, setStatus] = useState("Guardado");
   const revision = useRef(0);
-  const fieldRevision = useRef<Partial<Record<"weight" | "reps" | "rir", number>>>({});
+  const fieldRevision = useRef<
+    Partial<Record<"weight" | "reps" | "rir", number>>
+  >({});
   const inFlight = useRef(0);
   const drafts = useRef<Partial<Record<"weight" | "reps" | "rir", string>>>({});
 
@@ -38,27 +48,46 @@ export default function SetRow({
     inFlight.current++;
     setStatus("Guardando…");
     try {
-      await persist(`${set.id}:${field}`, async () => {
-        const normalized = value.trim().replace(",", ".");
-        if (normalized !== "" && !/^\d+(\.\d+)?$/.test(normalized)) throw new Error("Valor inválido");
-        const parsed = normalized === "" ? null : Number(normalized);
-        if (field === "reps" && parsed !== null && !Number.isInteger(parsed)) throw new Error("Repeticiones inválidas");
-        await updateSet(set.id, { [field]: parsed });
-      }, `set:${set.id}`);
-      if (fieldRevision.current[field] === current) delete drafts.current[field];
+      await persist(
+        `${set.id}:${field}`,
+        async () => {
+          const normalized = value.trim().replace(",", ".");
+          if (normalized !== "" && !/^\d+(\.\d+)?$/.test(normalized))
+            throw new Error("Valor inválido");
+          const parsed = normalized === "" ? null : Number(normalized);
+          if (field === "reps" && parsed !== null && !Number.isInteger(parsed))
+            throw new Error("Repeticiones inválidas");
+          await (onSave ?? updateSet)(set.id, { [field]: parsed });
+        },
+        `set:${set.id}`,
+      );
+      if (fieldRevision.current[field] === current)
+        delete drafts.current[field];
       onChanged();
     } catch {
       // Preserve the field draft; a newer write may still succeed.
     } finally {
       inFlight.current--;
-      if (!deletingRef.current) setStatus(inFlight.current ? "Guardando…" : Object.keys(drafts.current).length ? "No se guardó. Revisá los valores y reintentá." : "Guardado");
+      if (!deletingRef.current)
+        setStatus(
+          inFlight.current
+            ? "Guardando…"
+            : Object.keys(drafts.current).length
+              ? "No se guardó. Revisá los valores y reintentá."
+              : "Guardado",
+        );
     }
   }
 
   return (
     <div>
-      <fieldset disabled={deleting} className="grid grid-cols-[28px_1fr_1fr_1fr_28px] items-center gap-2 py-1.5">
-        <div className="text-sm text-text-tertiary tabular text-center">{set.setNumber}</div>
+      <fieldset
+        disabled={deleting}
+        className="grid grid-cols-[28px_1fr_1fr_1fr_28px] items-center gap-2 py-1.5"
+      >
+        <div className="text-sm text-text-tertiary tabular text-center">
+          {set.setNumber}
+        </div>
 
         <div className="relative">
           <input
@@ -67,11 +96,13 @@ export default function SetRow({
             type="text"
             inputMode="decimal"
             defaultValue={set.weight ?? ""}
-            placeholder={placeholderWeight != null ? String(placeholderWeight) : "kg"}
+            placeholder={
+              placeholderWeight != null ? String(placeholderWeight) : "kg"
+            }
             onChange={(e) => save("weight", e.target.value)}
             className="w-full rounded-lg bg-surface-2 border border-border-soft px-2.5 py-2.5 text-center font-mono tabular text-base text-text placeholder:text-text-tertiary focus:outline-none focus:border-accent"
           />
-          {set.isPr && (
+          {set.isPr && isValidSet(set) && (
             <span className="absolute -top-2 -right-1.5 text-[10px] font-semibold text-brass bg-brass-soft px-1.5 py-0.5 rounded-full leading-none">
               PR
             </span>
@@ -109,12 +140,25 @@ export default function SetRow({
               setDeleteError(false);
               setStatus("Eliminando…");
               try {
-                await removeSet(set.id);
+                if (onDelete)
+                  await persist(
+                    `${set.id}:delete`,
+                    async () => {
+                      await onDelete(set.id);
+                      forgetDeletedSetFailures(set.id);
+                    },
+                    `set:${set.id}`,
+                  );
+                else await removeSet(set.id);
                 drafts.current = {};
                 onChanged();
               } catch {
                 setDeleteError(true);
-                setStatus(Object.keys(drafts.current).length ? "No se guardó. Revisá los valores y reintentá." : "Guardado");
+                setStatus(
+                  Object.keys(drafts.current).length
+                    ? "No se guardó. Revisá los valores y reintentá."
+                    : "Guardado",
+                );
                 deletingRef.current = false;
                 setDeleting(false);
               }
@@ -128,12 +172,30 @@ export default function SetRow({
           <div />
         )}
       </fieldset>
-      {deleteError && <p role="alert" className="text-xs text-text-secondary">No se pudo eliminar la serie. Reintentá con el botón de eliminar antes de finalizar.</p>}
-      <div className="text-xs text-text-secondary" role="status" aria-live="polite">
+      {deleteError && (
+        <p role="alert" className="text-xs text-text-secondary">
+          No se pudo eliminar la serie. Reintentá con el botón de eliminar antes
+          de finalizar.
+        </p>
+      )}
+      <div
+        className="text-xs text-text-secondary"
+        role="status"
+        aria-live="polite"
+      >
         {status}
-        {status.startsWith("No se guardó") && <button type="button" className="ml-2 text-accent" onClick={() => {
-          for (const [field, value] of Object.entries(drafts.current)) void save(field as "weight" | "reps" | "rir", value!);
-        }}>Reintentar</button>}
+        {status.startsWith("No se guardó") && (
+          <button
+            type="button"
+            className="ml-2 text-accent"
+            onClick={() => {
+              for (const [field, value] of Object.entries(drafts.current))
+                void save(field as "weight" | "reps" | "rir", value!);
+            }}
+          >
+            Reintentar
+          </button>
+        )}
       </div>
     </div>
   );
