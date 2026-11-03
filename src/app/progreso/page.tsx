@@ -1,44 +1,68 @@
 "use client";
-
+import { useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { getExerciseCatalog } from "@/lib/workouts";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
-export default function ProgresoPage() {
-  const catalog=useLiveQuery(getExerciseCatalog,[]);
+import { db } from "@/lib/db";
+export default function ProgressPage() {
+  const [search, setSearch] = useState("");
+  const catalog = useLiveQuery(async () => {
+    try {
+      const exercises = await getExerciseCatalog();
+      // Include archived snapshot identities even if a future catalog omits them.
+      for (const snapshot of await db.exerciseSnapshots.toArray())
+        if (!exercises.some((e) => e.id === snapshot.exercise.id))
+          exercises.push(snapshot.exercise);
+      return { exercises, error: false };
+    } catch {
+      return { exercises: [], error: true };
+    }
+  }, []);
+  const filtered =
+    catalog?.exercises.filter((e) =>
+      e.name.toLocaleLowerCase("es").includes(search.toLocaleLowerCase("es")),
+    ) ?? [];
   return (
-    <div className="min-h-dvh pb-10">
-      <header className="safe-top sticky top-0 z-30 bg-bg/90 backdrop-blur border-b border-border-soft px-4 py-3 flex items-center gap-3">
-        <Link href="/" className="text-text-secondary active:text-text">
-          <ChevronLeft size={22} />
-        </Link>
-        <h1 className="text-base font-semibold">Progreso</h1>
-      </header>
-
-      <p className="px-4 pt-4 pb-2 text-xs text-text-tertiary">
-        Elegí un ejercicio para ver su evolución.
+    <main className="px-5 py-5 pb-12">
+      <Link href="/" className="back-link">
+        ← Inicio
+      </Link>
+      <p className="eyebrow mt-4">Cada serie cuenta</p>
+      <h1 className="page-title mt-2">Tu evolución.</h1>
+      <p className="text-sm text-text-secondary mt-3 mb-6">
+        Peso, repeticiones y récords. Tu historial acompaña al ejercicio, aunque
+        cambie de día.
       </p>
-
-      {[1, 2, 3, 4].map((day) => (
-        <div key={day} className="mb-4">
-          <p className="px-4 text-[11px] uppercase tracking-wide text-text-tertiary mb-1.5">
-            Día {day}
-          </p>
-          <div className="flex flex-col">
-            {(catalog ?? []).filter(ex=>ex.day===day).map((ex) => (
-              <Link
-                key={ex.id}
-                href={`/ejercicio/${ex.id}`}
-                className="flex items-center justify-between px-4 py-3 border-b border-border-soft active:bg-surface"
-              >
-                <span className="text-sm text-text">{ex.name}</span>
-                <ChevronRight size={16} className="text-text-tertiary" />
-              </Link>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
+      <label className="block mb-5">
+        <span className="sr-only">Buscar ejercicio</span>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar un ejercicio"
+          className="w-full rounded-2xl bg-surface border border-border px-4 py-3"
+        />
+      </label>
+      {catalog?.error && (
+        <p role="alert">No se pudo leer el catálogo. Reintentá recargando.</p>
+      )}
+      <div className="space-y-2">
+        {filtered.map((e) => (
+          <Link
+            href={`/ejercicio/${e.id}`}
+            key={e.id}
+            className="panel flex justify-between items-center gap-3 min-h-16"
+          >
+            <span className="text-sm font-medium">{e.name}</span>
+            <span className="text-accent" aria-hidden="true">
+              ↗
+            </span>
+          </Link>
+        ))}
+        {catalog && !filtered.length && !catalog.error && (
+          <p className="empty-state">No se encontraron ejercicios.</p>
+        )}
+      </div>
+    </main>
   );
 }

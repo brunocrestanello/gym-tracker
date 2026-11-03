@@ -15,20 +15,29 @@ const DAY_FOCUS: Record<number, string> = {
 
 export default function Home() {
   const lastSession = useLiveQuery(async () => {
-    const all = await db.workoutSessions.filter((s) => s.finishedAt !== null).toArray();
-    return all.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0];
+    const all = await db.workoutSessions
+      .filter((s) => s.finishedAt !== null)
+      .toArray();
+    return all.sort((a, b) =>
+      a.date < b.date ? 1 : a.date > b.date ? -1 : 0,
+    )[0];
   }, []);
 
   const activeSession = useLiveQuery(async () => {
-    const all = await db.workoutSessions.filter((s) => s.finishedAt === null).toArray();
+    const all = await db.workoutSessions
+      .filter((s) => s.finishedAt === null)
+      .toArray();
     return all[0];
   }, []);
 
   return (
-    <div className="min-h-dvh safe-top px-5 pt-8 pb-10 flex flex-col">
+    <div className="px-5 pt-7 pb-10 flex flex-col">
       <div className="mb-7">
-        <p className="text-xs text-text-tertiary tracking-wide mb-1">RUTINA</p>
-        <h1 className="text-2xl font-semibold text-text">Bruno</h1>
+        <p className="eyebrow mb-2">Tu espacio de entrenamiento</p>
+        <h1 className="page-title">Hoy, un poco más fuerte.</h1>
+        <p className="text-sm text-text-secondary mt-3">
+          Elegí tu día. Registrá cada avance.
+        </p>
       </div>
 
       {activeSession && (
@@ -45,13 +54,12 @@ export default function Home() {
 
       <div className="grid grid-cols-2 gap-3 mb-6">
         {[1, 2, 3, 4].map((day) => (
-          <Link
-            key={day}
-            href={`/dia/${day}`}
-            className="rounded-2xl bg-surface border border-border-soft px-4 py-6 flex flex-col items-center justify-center gap-1 active:bg-surface-2 transition-colors"
-          >
-            <span className="text-3xl font-semibold text-text tabular">{day}</span>
-            <span className="text-[11px] text-text-tertiary text-center leading-tight">
+          <Link key={day} href={`/dia/${day}`} className="day-card">
+            <span className="eyebrow">
+              Día de rutina <span aria-hidden="true">↗</span>
+            </span>
+            <span className="day-number tabular">0{day}</span>
+            <span className="text-xs text-text-secondary leading-relaxed">
               {DAY_FOCUS[day]}
             </span>
           </Link>
@@ -71,7 +79,7 @@ export default function Home() {
           className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface border border-border-soft active:bg-surface-2"
         >
           <LineChart size={17} className="text-text-secondary" />
-          <span className="text-sm text-text">Progreso / Estadísticas</span>
+          <span className="text-sm text-text">Evolución y récords</span>
         </Link>
         <Link
           href="/ajustes"

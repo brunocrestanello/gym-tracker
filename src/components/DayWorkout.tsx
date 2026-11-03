@@ -124,7 +124,7 @@ export default function DayWorkout({
               ? "first"
               : next?.exercise.supersetGroup !== group
                 ? "last"
-                : "first";
+                : "middle";
           return (
             <section
               key={`${draft.token}:${slot.id}`}
@@ -258,7 +258,7 @@ export default function DayWorkout({
           </div>
         </div>
       )}
-      <div className="fixed bottom-0 left-0 right-0 safe-bottom px-4 pb-4 pt-6 bg-gradient-to-t from-bg via-bg/95 to-transparent">
+      <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-[760px] z-30 safe-bottom px-4 pb-4 pt-6 bg-gradient-to-t from-bg via-bg/95 to-transparent">
         <button
           disabled={busy || !draft.sessionId}
           onClick={finish}

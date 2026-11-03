@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import ThemeToggle from "./ThemeToggle";
 import { useEffect, useState } from "react";
 import { ensureSeeded } from "@/lib/db";
 import UnsavedChangesGuard from "@/components/UnsavedChangesGuard";
@@ -10,10 +12,18 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    ensureSeeded().then(() => setReady(true)).catch(() => setError(true));
+    ensureSeeded()
+      .then(() => setReady(true))
+      .catch(() => setError(true));
   }, []);
 
-  if (error) return <p role="alert" className="p-6">No se pudo abrir el almacenamiento. Tus datos no fueron reinicializados. <button onClick={() => location.reload()}>Reintentar</button></p>;
+  if (error)
+    return (
+      <p role="alert" className="p-6">
+        No se pudo abrir el almacenamiento. Tus datos no fueron reinicializados.{" "}
+        <button onClick={() => location.reload()}>Reintentar</button>
+      </p>
+    );
 
   if (!ready) {
     return (
@@ -23,5 +33,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  return <RestTimerProvider><UnsavedChangesGuard />{children}</RestTimerProvider>;
+  return (
+    <RestTimerProvider>
+      <UnsavedChangesGuard />
+      <div className="app-frame">
+        <div className="brand-bar safe-top">
+          <Link href="/" aria-label="Inicio" className="brand">
+            GYM<span>TRACKER</span>
+            <small>ENTRENÁ CON INTENCIÓN</small>
+          </Link>
+          <ThemeToggle />
+        </div>
+        {children}
+      </div>
+    </RestTimerProvider>
+  );
 }

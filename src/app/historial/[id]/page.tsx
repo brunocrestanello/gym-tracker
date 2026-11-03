@@ -15,14 +15,20 @@ import { sumVolume, isValidSet } from "@/lib/calculations";
 import SetRow from "@/components/SetRow";
 import { ChevronLeft, Trash2 } from "lucide-react";
 
-export default function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SessionDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const completed = searchParams.get("completed") === "1";
 
   const [error, setError] = useState<string | null>(null);
-  const [session, setSession] = useState<WorkoutSessionFull | null | undefined>(undefined);
+  const [session, setSession] = useState<WorkoutSessionFull | null | undefined>(
+    undefined,
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [noteDraft, setNoteDraft] = useState("");
 
@@ -34,20 +40,40 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial de datos async estándar
-    load().catch(() => setError("No se pudo leer el entrenamiento. Reintentá recargando."));
+    load().catch(() =>
+      setError("No se pudo leer el entrenamiento. Reintentá recargando."),
+    );
   }, [load]);
 
   async function handleDelete() {
-    try { await waitForWrites(); await deleteSession(id); router.push("/historial"); }
-    catch { setError("No se pudo eliminar. Reintentá después de guardar los cambios pendientes."); }
+    try {
+      await waitForWrites();
+      await deleteSession(id);
+      router.push("/historial");
+    } catch {
+      setError(
+        "No se pudo eliminar. Reintentá después de guardar los cambios pendientes.",
+      );
+    }
   }
 
   async function saveNote() {
-    try { await persist(`${id}:note`, () => updateWorkoutSessionNote(id, noteDraft.trim() || null)); setError(null); }
-    catch { setError("La nota no se guardó. Volvé a intentar."); }
+    try {
+      await persist(`${id}:note`, () =>
+        updateWorkoutSessionNote(id, noteDraft.trim() || null),
+      );
+      setError(null);
+    } catch {
+      setError("La nota no se guardó. Volvé a intentar.");
+    }
   }
 
-  if (error && session === undefined) return <p role="alert" className="p-6">{error} <button onClick={() => location.reload()}>Reintentar</button></p>;
+  if (error && session === undefined)
+    return (
+      <p role="alert" className="p-6">
+        {error} <button onClick={() => location.reload()}>Reintentar</button>
+      </p>
+    );
 
   if (session === undefined) {
     return (
@@ -66,18 +92,25 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
 
   const totalVolume = session.exerciseSessions.reduce(
     (acc, es) => acc + sumVolume(es.sets),
-    0
+    0,
   );
   const totalSets = session.exerciseSessions.reduce(
     (acc, es) => acc + es.sets.filter(isValidSet).length,
-    0
+    0,
   );
 
   return (
     <div className="min-h-dvh pb-10">
-      {error && <p role="alert" className="p-4">{error}</p>}
+      {error && (
+        <p role="alert" className="p-4">
+          {error}
+        </p>
+      )}
       <header className="safe-top sticky top-0 z-30 bg-bg/90 backdrop-blur border-b border-border-soft px-4 py-3 flex items-center gap-3">
-        <Link href={completed ? "/" : "/historial"} className="text-text-secondary active:text-text">
+        <Link
+          href={completed ? "/" : "/historial"}
+          className="text-text-secondary active:text-text"
+        >
           <ChevronLeft size={22} />
         </Link>
         <h1 className="text-base font-semibold">
@@ -95,29 +128,50 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
             <span>{searchParams.get("sets")} series</span>
           </div>
           <p className="text-xs text-text-secondary mt-1 tabular">
-            {Number(searchParams.get("volume") ?? 0).toLocaleString("es-UY")} kg de volumen ·
-            Duración {formatDuration(Number(searchParams.get("duration") ?? 0))}
-            {Number(searchParams.get("prs") ?? 0) > 0
-              ? ` · PRs: ${searchParams.get("prs")}`
-              : ""}
+            {Number(searchParams.get("volume") ?? 0).toLocaleString("es-UY")} kg
+            de volumen · Duración{" "}
+            {formatDuration(Number(searchParams.get("duration") ?? 0))}
           </p>
         </div>
       )}
 
       <div className="px-4 pt-4 flex gap-4 text-xs text-text-secondary mb-2">
         <span className="tabular">{totalSets} series</span>
-        <span className="tabular">{Math.round(totalVolume).toLocaleString("es-UY")} kg volumen</span>
-        {session.duration != null && <span>{formatDuration(session.duration)}</span>}
+        <span className="tabular">
+          {Math.round(totalVolume).toLocaleString("es-UY")} kg volumen
+        </span>
+        {session.duration != null && (
+          <span>{formatDuration(session.duration)}</span>
+        )}
       </div>
 
       <div className="px-4 flex flex-col gap-3 mt-2">
         {session.exerciseSessions.map((es) => (
-          <div key={es.id} className="rounded-2xl bg-surface border border-border-soft px-4 py-3">
-            {es.status==="omitted" && <p className="text-xs text-text-secondary">Omitido · sin series registradas</p>}
-            {es.origin==="substitution" && <p className="text-xs text-text-secondary">Ejercicio sustituto</p>}
-            {es.origin==="additional" && <p className="text-xs text-text-secondary">Ejercicio adicional</p>}
-            <h3 className="text-[15px] font-semibold text-text mb-2">{es.exercise.name}</h3>
-            <div className="grid grid-cols-[28px_1fr_1fr_1fr_28px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
+          <div
+            key={es.id}
+            className="rounded-2xl bg-surface border border-border-soft px-4 py-3"
+          >
+            {es.status === "omitted" && (
+              <p className="text-xs text-text-secondary">
+                Omitido · sin series registradas
+              </p>
+            )}
+            {es.origin === "substitution" && (
+              <p className="text-xs text-text-secondary">Ejercicio sustituto</p>
+            )}
+            {es.origin === "additional" && (
+              <p className="text-xs text-text-secondary">Ejercicio adicional</p>
+            )}
+            <Link
+              href={`/ejercicio/${es.exerciseId}`}
+              className="flex items-center justify-between min-h-11 mb-2"
+            >
+              <h3 className="text-[15px] font-semibold text-text">
+                {es.exercise.name}
+              </h3>
+              <span className="text-accent text-xs">Evolución ↗</span>
+            </Link>
+            <div className="grid grid-cols-[24px_1fr_1fr_1fr_44px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
               <div className="text-center">#</div>
               <div className="text-center">Peso</div>
               <div className="text-center">Reps</div>
@@ -140,7 +194,9 @@ export default function SessionDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       <div className="px-4 mt-4">
-        <label className="text-xs text-text-secondary mb-1 block">Nota de la sesión</label>
+        <label className="text-xs text-text-secondary mb-1 block">
+          Nota de la sesión
+        </label>
         <textarea
           value={noteDraft}
           onChange={(e) => setNoteDraft(e.target.value)}

@@ -11,7 +11,7 @@ import { isValidSet } from "./calculations";
 import { db } from "./db";
 import { exerciseById, exercisesForDay } from "@/data/routine";
 import { isoWeekInfo, nowIso, todayDateString } from "./dates";
-import { bestE1rm, maxWeight as maxW, e1rm } from "./calculations";
+import { summarizeSets } from "./insights";
 import {
   BackupV2,
   Exercise,
@@ -308,7 +308,7 @@ export interface FinishSummary {
   prCount: number;
 }
 
-/** Finaliza la sesión: marca PRs por serie y devuelve el resumen. */
+/** Finaliza la sesión sin escribir marcas PR persistentes. */
 export async function finishSession(
   workoutSessionId: string,
 ): Promise<FinishSummary> {
@@ -370,40 +370,13 @@ export async function finishSession(
           exerciseId,
           workoutSessionId,
         );
-        let histMaxWeight = 0;
-        let histMaxE1rm = 0;
-        let histMaxVolume = 0;
-        for (const h of history) {
-          const validHistSets = h.sets.filter(isValidSet);
-          histMaxWeight = Math.max(histMaxWeight, maxW(validHistSets));
-          histMaxE1rm = Math.max(histMaxE1rm, bestE1rm(validHistSets));
-          const vol = validHistSets.reduce(
-            (acc, s) => acc + s.weight! * s.reps!,
-            0,
-          );
-          histMaxVolume = Math.max(histMaxVolume, vol);
-        }
-
-        const beatsVolume = history.length > 0 && sessionVolume > histMaxVolume;
-        let volumePrAssigned = false;
-
-        for (const s of validSets) {
-          let isPr = false;
-          if (history.length === 0) {
-            // Primera vez que se registra este ejercicio: no es "récord" comparativo.
-            isPr = false;
-          } else {
-            if (s.weight! > histMaxWeight) isPr = true;
-            if (e1rm(s.weight!, s.reps!) > histMaxE1rm) isPr = true;
-            if (beatsVolume && !volumePrAssigned) {
-              isPr = true;
-              volumePrAssigned = true;
-            }
-          }
-          if (!session.finishedAt) await db.sets.update(s.id, { isPr });
-          if (session.finishedAt ? s.isPr : isPr) {
-            prCount++;
-          }
+        const previous = summarizeSets(history.flatMap((h) => h.sets));
+        // Derived only: legacy isPr fields remain untouched, including in exports.
+        if (previous.setCount) {
+          prCount += validSets.filter(
+            (s) =>
+              s.weight! > previous.maxWeight! || s.reps! > previous.maxReps!,
+          ).length;
         }
       }
 

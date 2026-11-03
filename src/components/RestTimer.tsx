@@ -1,6 +1,13 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface RestTimerState {
   remaining: number; // segundos
@@ -40,7 +47,8 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
       try {
         const AudioCtx =
           window.AudioContext ||
-          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          (window as unknown as { webkitAudioContext: typeof AudioContext })
+            .webkitAudioContext;
         const ctx = new AudioCtx();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -96,16 +104,26 @@ export function RestTimerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <RestTimerContext.Provider value={{ remaining, total, running, start, stop, addTime }}>
+    <RestTimerContext.Provider
+      value={{ remaining, total, running, start, stop, addTime }}
+    >
       {children}
-      {running && <FloatingTimerBar remaining={remaining} total={total} stop={stop} addTime={addTime} />}
+      {running && (
+        <FloatingTimerBar
+          remaining={remaining}
+          total={total}
+          stop={stop}
+          addTime={addTime}
+        />
+      )}
     </RestTimerContext.Provider>
   );
 }
 
 export function useRestTimer() {
   const ctx = useContext(RestTimerContext);
-  if (!ctx) throw new Error("useRestTimer debe usarse dentro de RestTimerProvider");
+  if (!ctx)
+    throw new Error("useRestTimer debe usarse dentro de RestTimerProvider");
   return ctx;
 }
 
@@ -126,13 +144,21 @@ function FloatingTimerBar({
   stop: () => void;
   addTime: (s: number) => void;
 }) {
-  const pct = total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
+  const pct =
+    total > 0 ? Math.max(0, Math.min(100, (remaining / total) * 100)) : 0;
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 safe-bottom">
+    <div className="fixed bottom-24 left-0 right-0 mx-auto max-w-[760px] z-40 safe-bottom">
       <div className="mx-3 mb-3 rounded-xl border border-border bg-surface/95 backdrop-blur px-4 py-2.5 shadow-lg shadow-black/30 flex items-center gap-3">
         <div className="relative h-9 w-9 shrink-0">
           <svg viewBox="0 0 36 36" className="h-9 w-9 -rotate-90">
-            <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-surface-3)" strokeWidth="3" />
+            <circle
+              cx="18"
+              cy="18"
+              r="15.5"
+              fill="none"
+              stroke="var(--color-surface-3)"
+              strokeWidth="3"
+            />
             <circle
               cx="18"
               cy="18"
@@ -147,8 +173,12 @@ function FloatingTimerBar({
           </svg>
         </div>
         <div className="flex-1">
-          <div className="text-xs text-text-secondary leading-none mb-0.5">Descanso</div>
-          <div className="font-mono tabular text-lg leading-none text-text">{formatMMSS(remaining)}</div>
+          <div className="text-xs text-text-secondary leading-none mb-0.5">
+            Descanso
+          </div>
+          <div className="font-mono tabular text-lg leading-none text-text">
+            {formatMMSS(remaining)}
+          </div>
         </div>
         <button
           onClick={() => addTime(15)}

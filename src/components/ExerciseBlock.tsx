@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
 import { Exercise, SetEntry } from "@/lib/types";
-import { addSet, getPreviousExerciseData } from "@/lib/repo";
-import { formatDateShort } from "@/lib/dates";
+import { addSet } from "@/lib/repo";
+import ExerciseReference from "./ExerciseReference";
 import {
   ExternalLink,
   Plus,
@@ -29,7 +29,7 @@ export default function ExerciseBlock({
   exerciseSessionId: string;
   exercise: Exercise;
   workoutSessionId: string;
-  supersetPosition: "single" | "first" | "last";
+  supersetPosition: "single" | "first" | "middle" | "last";
   entries?: SetEntry[];
   onSave?: (
     id: string,
@@ -49,27 +49,10 @@ export default function ExerciseBlock({
     [exerciseSessionId, Boolean(entries)],
   );
   const sets = entries ?? storedSets;
-  const [previous, setPrevious] = useState<
-    { date: string; sets: SetEntry[] } | null | undefined
-  >(undefined);
   const [error, setError] = useState<string | null>(null);
   const [showTimer, setShowTimer] = useState(false);
   const [customSeconds, setCustomSeconds] = useState("");
   const timer = useRestTimer();
-
-  useEffect(() => {
-    let mounted = true;
-    getPreviousExerciseData(exercise.id, workoutSessionId)
-      .then((res) => {
-        if (mounted) setPrevious(res);
-      })
-      .catch(() => {
-        if (mounted) setError("No se pudo leer la referencia anterior.");
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [exercise.id, workoutSessionId]);
 
   const repRange = `${exercise.targetRepsMin}\u2013${exercise.targetRepsMax}`;
   const rirRange =
@@ -77,8 +60,10 @@ export default function ExerciseBlock({
       ? `RIR ${exercise.targetRirMin}`
       : `RIR ${exercise.targetRirMax}\u2013${exercise.targetRirMin}`;
 
-  const roundedTop = supersetPosition !== "last";
-  const roundedBottom = supersetPosition !== "first";
+  const roundedTop =
+    supersetPosition === "single" || supersetPosition === "first";
+  const roundedBottom =
+    supersetPosition === "single" || supersetPosition === "last";
 
   return (
     <div
@@ -107,7 +92,7 @@ export default function ExerciseBlock({
               href={exercise.videoUrl}
               target="_blank"
               rel="noreferrer"
-              className="shrink-0 text-text-tertiary active:text-accent"
+              className="shrink-0 min-h-11 min-w-11 flex items-center justify-center text-text-secondary active:text-accent"
               aria-label="Ver técnica"
             >
               <ExternalLink size={13} />
@@ -116,46 +101,20 @@ export default function ExerciseBlock({
         </div>
         <Link
           href={`/ejercicio/${exercise.id}`}
-          className="shrink-0 text-text-tertiary active:text-accent flex items-center gap-1 text-xs"
+          className="shrink-0 min-h-11 min-w-11 text-text-secondary active:text-accent flex items-center justify-center gap-1 text-xs"
         >
-          <TrendingUp size={13} />
+          <TrendingUp size={18} />
+          <span className="sr-only">Ver evolución de {exercise.name}</span>
         </Link>
       </div>
       <div className="text-xs text-text-secondary mb-3">
         {exercise.targetSets} series · {repRange} reps · {rirRange}
       </div>
 
-      {/* Referencia anterior */}
-      <div className="rounded-lg bg-surface-2/60 border border-border-soft px-3 py-2 mb-3">
-        {previous === undefined ? (
-          <div className="text-xs text-text-tertiary">
-            Cargando referencia\u2026
-          </div>
-        ) : previous === null ? (
-          <div className="text-xs text-text-tertiary">
-            Sin registros anteriores
-          </div>
-        ) : (
-          <>
-            <div className="text-[11px] text-text-secondary mb-1">
-              Última vez · {formatDateShort(previous.date)}
-            </div>
-            <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-              {previous.sets
-                .filter((s) => s.weight != null || s.reps != null)
-                .map((s) => (
-                  <span
-                    key={s.id}
-                    className="text-xs font-mono tabular text-text-secondary"
-                  >
-                    {s.setNumber} · {s.weight ?? "\u2014"}kg ·{" "}
-                    {s.reps ?? "\u2014"}r{s.rir != null ? ` · RIR${s.rir}` : ""}
-                  </span>
-                ))}
-            </div>
-          </>
-        )}
-      </div>
+      <ExerciseReference
+        exerciseId={exercise.id}
+        excludeWorkoutId={workoutSessionId}
+      />
 
       {error && (
         <p role="alert" className="text-xs">
@@ -163,7 +122,7 @@ export default function ExerciseBlock({
         </p>
       )}
       {/* Tabla de series */}
-      <div className="grid grid-cols-[28px_1fr_1fr_1fr_28px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
+      <div className="grid grid-cols-[24px_1fr_1fr_1fr_44px] gap-2 text-[10px] uppercase tracking-wide text-text-tertiary mb-1 px-0.5">
         <div className="text-center">#</div>
         <div className="text-center">Peso</div>
         <div className="text-center">Reps</div>
@@ -175,10 +134,7 @@ export default function ExerciseBlock({
           <SetRow
             key={s.id}
             set={s}
-            placeholderWeight={
-              previous?.sets.find((p) => p.setNumber === s.setNumber)?.weight ??
-              null
-            }
+            placeholderWeight={null}
             canDelete={(sets?.length ?? 0) > 1}
             onChanged={() => {}}
             onSave={onSave}
