@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ChevronLeft } from "lucide-react";
@@ -16,6 +16,7 @@ import { FinishSummary, finishSession, getActiveSession } from "@/lib/repo";
 import { waitForWrites } from "@/lib/persistence";
 import { RoutineDay } from "@/lib/types";
 import ExerciseBlock from "./ExerciseBlock";
+import Modal from "./Modal";
 
 export default function DayWorkout({
   day,
@@ -26,6 +27,8 @@ export default function DayWorkout({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmFinish, setConfirmFinish] = useState(false);
+  const finishing = useRef(false);
   const [picker, setPicker] = useState<string | null>(null);
   const [choice, setChoice] = useState("");
   const draft = useLiveQuery(async () => {
@@ -60,7 +63,8 @@ export default function DayWorkout({
     }
   }
   async function finish() {
-    if (!draft?.sessionId) return;
+    if (!draft?.sessionId || finishing.current) return;
+    finishing.current = true;
     setBusy(true);
     try {
       await waitForWrites();
@@ -69,6 +73,7 @@ export default function DayWorkout({
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo finalizar");
       setBusy(false);
+      finishing.current = false;
     }
   }
   if (!draft)
@@ -108,7 +113,7 @@ export default function DayWorkout({
           </Link>
         </p>
       )}
-      {error && (
+      {error && !confirmFinish && (
         <p role="alert" className="p-4 text-sm text-danger">
           {error}
         </p>
@@ -261,7 +266,7 @@ export default function DayWorkout({
       <div className="fixed bottom-0 left-0 right-0 mx-auto max-w-[760px] z-30 safe-bottom px-4 pb-4 pt-6 bg-gradient-to-t from-bg via-bg/95 to-transparent">
         <button
           disabled={busy || !draft.sessionId}
-          onClick={finish}
+          onClick={() => setConfirmFinish(true)}
           className="w-full py-3.5 rounded-xl bg-accent text-bg font-semibold disabled:opacity-60"
         >
           {busy
@@ -271,6 +276,38 @@ export default function DayWorkout({
               : "REGISTRÁ UNA SERIE PARA EMPEZAR"}
         </button>
       </div>
+      {confirmFinish && (
+        <Modal
+          titleId="finish-title"
+          busy={busy}
+          onDismiss={() => setConfirmFinish(false)}
+        >
+          <h2 id="finish-title" className="font-semibold">
+            ¿Finalizar el entrenamiento?
+          </h2>
+          <p className="text-sm text-text-secondary my-3">
+            Se guardarán las series pendientes y el entrenamiento quedará en
+            solo lectura. Después podrás usar “Editar entrenamiento”.
+          </p>
+          {error && (
+            <p role="alert" className="text-sm mb-3">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-4">
+            <button disabled={busy} onClick={() => setConfirmFinish(false)}>
+              Seguir entrenando
+            </button>
+            <button
+              disabled={busy}
+              className="text-accent font-semibold"
+              onClick={finish}
+            >
+              {busy ? "Guardando…" : "Sí, finalizar entrenamiento"}
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

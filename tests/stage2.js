@@ -558,6 +558,9 @@ export async function runStage2Tests({ test, assert, equal, rejects }) {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(reps, "8");
         reps.dispatchEvent(new Event("input", {bubbles:true}));
         button("FINALIZAR ENTRENAMIENTO").click();
+        await until(() => button("Sí, finalizar entrenamiento"));
+        assert(finished === null);
+        button("Sí, finalizar entrenamiento").click();
         await until(() => finished !== null);
         assert(finished.summary.setCount === 1 && finished.summary.totalVolume === 100);
         assert((await db.workoutSessions.get(finished.id)).routineDay === 1);

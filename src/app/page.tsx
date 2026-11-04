@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { completedDaysThisWeek } from "@/lib/completion";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/lib/db";
-import { formatDateShort } from "@/lib/dates";
+import { formatDateShort, todayDateString } from "@/lib/dates";
 import { History, LineChart, Settings } from "lucide-react";
 
 const DAY_FOCUS: Record<number, string> = {
@@ -14,6 +16,24 @@ const DAY_FOCUS: Record<number, string> = {
 };
 
 export default function Home() {
+  const [today, setToday] = useState(todayDateString);
+  useEffect(() => {
+    const refresh = () => setToday(todayDateString());
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("pageshow", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("pageshow", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const completedDays = useLiveQuery(
+    async () =>
+      completedDaysThisWeek(await db.workoutSessions.toArray(), today),
+    [today],
+  );
+
   const lastSession = useLiveQuery(async () => {
     const all = await db.workoutSessions
       .filter((s) => s.finishedAt !== null)
@@ -53,12 +73,22 @@ export default function Home() {
       )}
 
       <div className="grid grid-cols-2 gap-3 mb-6">
-        {[1, 2, 3, 4].map((day) => (
-          <Link key={day} href={`/dia/${day}`} className="day-card">
+        {([1, 2, 3, 4] as const).map((day) => (
+          <Link
+            key={day}
+            href={`/dia/${day}`}
+            aria-label={`Día ${day}${completedDays?.has(day) ? ", completado esta semana" : ""}`}
+            className={`day-card ${completedDays?.has(day) ? "day-card-completed" : ""}`}
+          >
             <span className="eyebrow">
               Día de rutina <span aria-hidden="true">↗</span>
             </span>
             <span className="day-number tabular">0{day}</span>
+            {completedDays?.has(day) && (
+              <span className="text-xs font-semibold text-accent-strong">
+                ✓ Completado esta semana
+              </span>
+            )}
             <span className="text-xs text-text-secondary leading-relaxed">
               {DAY_FOCUS[day]}
             </span>
