@@ -352,3 +352,6 @@ input:focus {
     scroll-behavior: auto !important;
   }
 }
+
+.day-card-completed { background:var(--accent-soft); border:2px solid var(--accent); }
+.day-card-completed:active { background:var(--accent-soft); }

@@ -2,6 +2,7 @@ import * as workoutRepo from '../src/lib/workouts';
 import {runStage2Tests} from './stage2';
 import {runInsightsTests} from './insights';
 import {runReleaseTests} from './release';
+import {runHistoryEditTests} from './history-edit';
 import { db, GymDatabase, ensureSeeded } from '../src/lib/db';
 import * as repo from '../src/lib/repo';
 import { validateBackup } from '../src/lib/backup';
@@ -422,5 +423,6 @@ if (!location.search.includes("peer")) window.testResults = (async () => {
   await runStage2Tests({test,assert,equal,rejects});
   await runInsightsTests({test,assert,equal,rejects});
   await runReleaseTests({test,assert,equal,rejects});
+  await runHistoryEditTests({test,assert,equal,rejects});
   return results;
 })();
